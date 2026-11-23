@@ -291,7 +291,7 @@ namespace PawsPort.Controllers
                     await _loginLogService.LogUserLoginAsync(userInfo.UserId, model.Email, ipAddress, userAgent);
 
                     Log.Information("[AuthController] RequestLoginVerificationCode - 跳過驗證直接登入成功: {Email}, IP: {IP}", model.Email, ipAddress);
-                    return Success(new { Token = directToken, User = userInfo, Message = message, SkipVerification = true });
+                    return Success(new { Token = directToken, User = AuthUserDTO.From(userInfo), Message = message, SkipVerification = true });
                 }
             }
 
@@ -356,7 +356,7 @@ namespace PawsPort.Controllers
                     await _loginLogService.LogUserLoginAsync(userInfo.UserId, model.Email, ipAddress, userAgent);
 
                     Log.Information("[AuthController] VerifyLoginCode - 登入成功: {Email}, IP: {IP}", model.Email, ipAddress);
-                    return Success(new { Token = token, User = userInfo, Message = message });
+                    return Success(new { Token = token, User = AuthUserDTO.From(userInfo), Message = message });
                 }
             }
 
@@ -442,6 +442,35 @@ namespace PawsPort.Controllers
         //    }
         //}
 
+
+        /// <summary>
+        /// 取得目前登入者的精簡資料（以 Cookie 內的 Token 驗證）
+        /// </summary>
+        /// <returns>目前登入者的 UserId、Name、Photo</returns>
+        /// <response code="200">已登入</response>
+        /// <response code="401">未登入或 Token 已過期</response>
+        [Authorize]
+        [HttpGet("me")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [Tags("身分驗證")]
+        public async Task<IActionResult> GetCurrentUser()
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Failure("未登入", "Unauthorized", 401);
+            }
+
+            var userInfo = await _memberProfileService.GetUserInfoByIdAsync(userId);
+            if (userInfo == null)
+            {
+                // Token 有效但帳號已被刪除或停用
+                return Failure("未登入", "Unauthorized", 401);
+            }
+
+            return Success(new { User = AuthUserDTO.From(userInfo) });
+        }
 
         /// <summary>
         /// 使用者登出
@@ -686,7 +715,7 @@ namespace PawsPort.Controllers
                 return Success(new
                 {
                     Token = token,
-                    User = userInfo,
+                    User = userInfo == null ? null : AuthUserDTO.From(userInfo),
                     IsNewUser = isNewUser,
                     Message = isNewUser ? "註冊並登入成功" : "登入成功"
                 });
