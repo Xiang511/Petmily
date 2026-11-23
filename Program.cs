@@ -96,6 +96,9 @@ builder.Services.AddScoped<LoginLogService>();
 builder.Services.AddScoped<GoogleOAuthService>();
 builder.Services.AddScoped<EmailService>();
 
+// AuthService 需要 HttpContext 讀取目前請求的 JWT 身分
+builder.Services.AddHttpContextAccessor();
+
 // 註冊 HttpClient
 builder.Services.AddHttpClient();
 

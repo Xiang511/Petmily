@@ -26,9 +26,11 @@ namespace PawsPort.Controllers
         private readonly ClientMissingPetService _clientMissingPetService;
         private readonly FileService _fileService;
         private readonly CommentService _commentService;
+        private readonly AuthService _authService;
 
-        public UsersController(PetDbContext context, MemberProfileService memberProfileService, MemberPermissionService memberPermissionService, PetAdoptionService petAdoptionService, PetPassportService petPassportService, PlayerService playerService, ArticleService articleService, ClientMissingPetService clientMissingPetService, FileService fileService, CommentService commentService)
+        public UsersController(PetDbContext context, MemberProfileService memberProfileService, MemberPermissionService memberPermissionService, PetAdoptionService petAdoptionService, PetPassportService petPassportService, PlayerService playerService, ArticleService articleService, ClientMissingPetService clientMissingPetService, FileService fileService, CommentService commentService, AuthService authService)
         {
+            _authService = authService;
             _memberProfileService = memberProfileService;
             _memberPermissionService = memberPermissionService;
             _petAdoptionService = petAdoptionService;
@@ -46,6 +48,7 @@ namespace PawsPort.Controllers
         /// <returns>會員列表 JSON</returns>
         /// <response code="200">成功取得會員列表</response>
 
+        [Authorize(Policy = "會員系統_系統管理員")]
         [HttpGet]
         [ProducesResponseType(typeof(List<MemberUserDTO>), StatusCodes.Status200OK)]
         [Tags("會員管理")]
@@ -67,13 +70,22 @@ namespace PawsPort.Controllers
         /// <response code="200">成功取得會員資料</response>
         /// <response code="404">找不到指定的會員</response>
 
+        [Authorize]
         [HttpGet("{id}")]
         [ProducesResponseType(typeof(MemberUserDTO), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [Tags("會員管理")]
         public async Task<IActionResult> Members(int? id)
         {
             Log.Debug("[UsersController] Members GET by id - Entry, UserId: {UserId}", id);
+
+            // 只允許本人或系統管理員讀取；先檢查權限再查詢，避免藉 404/403 的差異探測帳號是否存在
+            if (_authService.TryGetCurrentUserId() != id && !await _authService.IsMemberAdminAsync())
+            {
+                Log.Warning("[UsersController] 拒絕讀取他人資料, 操作者: {CurrentUserId}, 目標: {UserId}", _authService.TryGetCurrentUserId(), id);
+                return Failure("FORBIDDEN", "無權限存取此會員資料", 403);
+            }
 
             Log.Debug("[UsersController] 調用 MemberProfileService.CheckUserInfoAsync, UserId: {UserId}", id);
             bool exist = await _memberProfileService.CheckUserInfoAsync(id, null);
@@ -100,6 +112,7 @@ namespace PawsPort.Controllers
         /// <response code="200">成功創建會員</response>
         /// <response code="400">請求資料格式錯誤或必填欄位缺失</response>
 
+        [Authorize(Policy = "會員系統_系統管理員")]
         [HttpPost]
         [ProducesResponseType(typeof(MemberUserDTO), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -122,6 +135,7 @@ namespace PawsPort.Controllers
         /// <returns>會員統計數據，包含總數、月註冊數、認證比例、訂閱數等</returns>
         /// <response code="200">成功取得統計資訊</response>
 
+        [Authorize(Policy = "會員系統_系統管理員")]
         [HttpGet("Summary")]
         [ProducesResponseType(typeof(MemberSummaryDTO), StatusCodes.Status200OK)]
         [Tags("會員管理")]
@@ -153,14 +167,24 @@ namespace PawsPort.Controllers
         /// <response code="400">會員 ID 不一致或資料格式錯誤</response>
         /// <response code="404">找不到指定的會員</response>
 
+        [Authorize]
         [HttpPut("{id}")]
         [ProducesResponseType(typeof(MemberUserDTO), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [Tags("會員管理")]
         public async Task<IActionResult> UpdateMembers(int? id, MemberUserDTO userDto)
         {
             Log.Debug("[UsersController] UpdateMembers PUT - Entry, UserId: {UserId}, 會員名稱: {Name}", id, userDto.Name);
+
+            // 只允許本人或系統管理員修改
+            var isAdmin = await _authService.IsMemberAdminAsync();
+            if (_authService.TryGetCurrentUserId() != id && !isAdmin)
+            {
+                Log.Warning("[UsersController] 拒絕修改他人資料, 操作者: {CurrentUserId}, 目標: {UserId}", _authService.TryGetCurrentUserId(), id);
+                return Failure("FORBIDDEN", "無權限修改此會員資料", 403);
+            }
 
             if (id != userDto.UserId)
             {
@@ -175,6 +199,15 @@ namespace PawsPort.Controllers
             {
                 Log.Warning("[UsersController] 會員不存在, UserId: {UserId}", id);
                 return Failure("USER_NOT_FOUND", "找不到使用者", 404);
+            }
+
+            // 一般會員只能改自己的基本資料；點數、帳號狀態、驗證狀態一律沿用資料庫現值，不接受前端傳入
+            if (!isAdmin)
+            {
+                var current = await _memberProfileService.GetUserInfoByIdAsync(id);
+                userDto.Point = current.Point;
+                userDto.Status = current.Status;
+                userDto.IsVerify = current.IsVerify;
             }
 
             Log.Debug("[UsersController] 調用 MemberProfileService.UpdateUserInfoAsync, UserId: {UserId}", id);
@@ -194,6 +227,7 @@ namespace PawsPort.Controllers
         /// <response code="404">找不到指定會員</response>
         /// 
 
+        [Authorize(Policy = "會員系統_系統管理員")]
         [HttpPatch("{id}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -626,7 +660,7 @@ namespace PawsPort.Controllers
         /// </summary>
         /// <param name="file">前端傳入的圖片檔案</param>
         /// <returns>回傳 JSON 格式的圖片網址</returns>
-        [AllowAnonymous]
+        [Authorize(Policy = "社群系統_一般成員")]
         [HttpPost("community/upload")]
         [Tags("社群管理")]
         public async Task<IActionResult> Upload([FromForm] IFormFile file)

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using NuGet.Common;
@@ -17,13 +18,41 @@ namespace PawsPort.Services
         private readonly MemberProfileService _memberProfileService;
         private readonly PetDbContext _context;
         private readonly EmailService _emailService;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IAuthorizationService _authorizationService;
 
-        public AuthService(IConfiguration configuration, MemberProfileService memberProfileService, PetDbContext PetDbContext, EmailService emailService)
+        public AuthService(IConfiguration configuration, MemberProfileService memberProfileService, PetDbContext PetDbContext, EmailService emailService, IHttpContextAccessor httpContextAccessor, IAuthorizationService authorizationService)
         {
             _configuration = configuration;
             _memberProfileService = memberProfileService;
             _context = PetDbContext;
             _emailService = emailService;
+            _httpContextAccessor = httpContextAccessor;
+            _authorizationService = authorizationService;
+        }
+
+        /// <summary>
+        /// 取得目前登入者的 UserId（從 JWT 的 NameIdentifier Claim 讀取），未登入或格式錯誤時回傳 null
+        /// </summary>
+        public int? TryGetCurrentUserId()
+        {
+            var value = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return int.TryParse(value, out var userId) ? userId : null;
+        }
+
+        /// <summary>
+        /// 目前登入者是否為會員系統的系統管理員
+        /// </summary>
+        public async Task<bool> IsMemberAdminAsync()
+        {
+            var user = _httpContextAccessor.HttpContext?.User;
+            if (user == null)
+            {
+                return false;
+            }
+
+            var result = await _authorizationService.AuthorizeAsync(user, "會員系統_系統管理員");
+            return result.Succeeded;
         }
 
         public async Task<string> ValidateUser(string email, string password)
