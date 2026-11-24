@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using PawsPort.Dtos;
 using PawsPort.Models;
 using PawsPort.Services;
-using Serilog;
 
 namespace PawsPort.Controllers
 {
@@ -37,7 +36,6 @@ namespace PawsPort.Controllers
         {
 
             var userPermissions = await _memberPermissionService.GetAllUserPermissionAsync();
-            Log.Debug("取得使用者權限列表成功，總數: {Count}", userPermissions.Count());
             return Success(userPermissions, "Success", 200);
         }
         /// <summary>
@@ -55,7 +53,6 @@ namespace PawsPort.Controllers
 
             var result = await _memberPermissionService.GetMemberPermissionSystemAsync();
 
-            Log.Debug("取得系統列表成功，總數: {Count}", result.Systems.Count());
             return Success(result, "Success", 200);
         }
 
@@ -75,7 +72,6 @@ namespace PawsPort.Controllers
             var result = await _memberPermissionService.GetMemberPermissionRoleAsync();
 
 
-            Log.Debug("取得角色列表成功，總數: {Count}", result.Roles.Count());
             return Success(result, "Success", 200);
         }
         /// <summary>
@@ -89,12 +85,9 @@ namespace PawsPort.Controllers
         [Tags("權限管理")]
         public async Task<IActionResult> BlockList()
         {
-            Log.Debug("[BlacklistController] BlockList GET - Entry");
 
-            Log.Debug("[BlacklistController] 調用 MemberBlockListService.GetBannedUsersAsync");
             var bannedUsers = await _memberBlockListService.GetBannedUsersAsync();
 
-            Log.Debug("[BlacklistController] 成功取得被封鎖的會員列表, 共 {Count} 筆", bannedUsers.Count);
             return Success(bannedUsers, "Success", 200);
 
         }
@@ -116,12 +109,9 @@ namespace PawsPort.Controllers
         [Tags("權限管理")]
         public async Task<IActionResult> BlockListCreate(int? id, MemberBlockListEditDTO user)
         {
-            Log.Debug("[BlacklistController] BlockListCreate POST - Entry, UserId: {UserId}", id);
 
-            Log.Debug("[BlacklistController] 調用 MemberBlockListService.CreateBannedUsersAsync, UserId: {UserId}", id);
             var result = await _memberBlockListService.CreateBannedUsersAsync(id, user);
 
-            Log.Debug("[BlacklistController] 封鎖會員成功, UserId: {UserId}, 名稱: {Name}", id, result.Name);
             return Success(result, "Success", 200);
         }
     }

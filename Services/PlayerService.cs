@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PawsPort.Dtos;
 using PawsPort.Models;
-using Serilog;
 
 namespace PawsPort.Services
 {
@@ -179,7 +178,6 @@ namespace PawsPort.Services
             }
 
             await _db.SaveChangesAsync();
-            Log.Information("PlayerService: 玩家 {PlayerId} 的資料與造型 {SkinId} 狀態已更新，名字: {UserName}", EditDTO.PlayerId, EditDTO.SkinId, EditDTO.UserName);
         }
 
         public async Task DeletePlayerAsync(int id)
@@ -212,13 +210,11 @@ namespace PawsPort.Services
                 // 提交
                 await transaction.CommitAsync();
 
-                Log.Information("玩家 {id} 及其關聯資料已成功刪除", id);
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
                 var innerMsg = ex.InnerException?.Message ?? ex.Message;
-                Log.Error("刪除失敗，錯誤詳細資訊：{Message}", innerMsg);
                 throw new Exception(innerMsg);
             }
         }
@@ -374,7 +370,6 @@ namespace PawsPort.Services
             foreach (var skin in otherEnabledSkins)
             {
                 skin.Enable = false;
-                Log.Information("其他造型已關閉, SkinId: {SkinId}", skin.SkinId);
             }
 
             // 4. 啟用新的造型
@@ -382,7 +377,6 @@ namespace PawsPort.Services
 
             // 5. 儲存變更
             await _db.SaveChangesAsync();
-            Log.Information("玩家 {PlayerId} 裝備造型 {SkinId}", playerId, skinId);
         }
 
         public async Task<(int remainingPoints, int acquiredSkinId)> BuySkinAsync(int playerId, int skinId)
@@ -439,7 +433,6 @@ namespace PawsPort.Services
             _db.PointTransactions.Add(pointTransaction);
 
             await _db.SaveChangesAsync();
-            Log.Information("玩家 {PlayerId} 購買造型 {SkinId}，消費 {Price} 點", playerId, skinId, skin.Price);
 
             return (player.CurrentPoint.Value, skinId);
         }

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using PawsPort.Dtos;
 using PawsPort.Services;
-using Serilog;
 
 namespace PawsPort.Controllers
 {
@@ -56,7 +55,6 @@ namespace PawsPort.Controllers
         public async Task<IActionResult> Create([FromBody] MissingReportCreateDto dto)
         {
             await _service.CreateReportAsync(dto);
-            Log.Information("創建失蹤報案成功 PetId:{PetId}", dto.PetId);
 
             return Success(dto, "新增報案成功！", 200);
         }
@@ -75,7 +73,6 @@ namespace PawsPort.Controllers
             }
 
             await _service.UpdateReportAsync(dto);
-            Log.Information("更新報案成功 ReportId:{ReportId}", id);
 
             return NoContent();
         }
@@ -94,7 +91,6 @@ namespace PawsPort.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             await _service.DeleteReportAsync(id);
-            Log.Information("刪除報案成功 ReportId:{ReportId}", id);
 
             return NoContent();
         }

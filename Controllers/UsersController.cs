@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using PawsPort.Dtos;
 using PawsPort.Models;
 using PawsPort.Services;
-using Serilog;
 
 
 using static Microsoft.CodeAnalysis.CSharp.SyntaxTokenParser;
@@ -54,11 +53,8 @@ namespace PawsPort.Controllers
         [Tags("會員管理")]
         public async Task<IActionResult> Members()
         {
-            Log.Debug("[UsersController] Members GET - Entry");
 
-            Log.Debug("[UsersController] 調用 MemberProfileService.GetAllUserInfoAsync");
             var users = await _memberProfileService.GetAllUserInfoAsync();
-            Log.Debug("[UsersController] 取得會員資料成功, 共 {Count} 筆", users.Count);
             return Success(users, "Success", 200);
         }
 
@@ -78,27 +74,21 @@ namespace PawsPort.Controllers
         [Tags("會員管理")]
         public async Task<IActionResult> Members(int? id)
         {
-            Log.Debug("[UsersController] Members GET by id - Entry, UserId: {UserId}", id);
 
             // 只允許本人或系統管理員讀取；先檢查權限再查詢，避免藉 404/403 的差異探測帳號是否存在
             if (_authService.TryGetCurrentUserId() != id && !await _authService.IsMemberAdminAsync())
             {
-                Log.Warning("[UsersController] 拒絕讀取他人資料, 操作者: {CurrentUserId}, 目標: {UserId}", _authService.TryGetCurrentUserId(), id);
                 return Failure("FORBIDDEN", "無權限存取此會員資料", 403);
             }
 
-            Log.Debug("[UsersController] 調用 MemberProfileService.CheckUserInfoAsync, UserId: {UserId}", id);
             bool exist = await _memberProfileService.CheckUserInfoAsync(id, null);
 
             if (!exist)
             {
-                Log.Warning("[UsersController] 會員不存在, UserId: {UserId}", id);
                 return Failure("USER_NOT_FOUND", "找不到使用者", 404);
             }
 
-            Log.Debug("[UsersController] 調用 MemberProfileService.GetUserInfoByIdAsync, UserId: {UserId}", id);
             var users = await _memberProfileService.GetUserInfoByIdAsync(id);
-            Log.Debug("[UsersController] 取得會員資料成功, UserId: {UserId}, 名稱: {Name}", users.UserId, users.Name);
             return Success(users, "Success", 200);
         }
 
@@ -119,12 +109,9 @@ namespace PawsPort.Controllers
         [Tags("會員管理")]
         public async Task<IActionResult> Members(CreateMemberDTO user)
         {
-            Log.Debug("[UsersController] Members POST - Entry, 會員名稱: {Name}", user.Name);
 
-            Log.Debug("[UsersController] 調用 MemberProfileService.CreateUserAsync, 會員名稱: {Name}", user.Name);
             var result = await _memberProfileService.CreateUserAsync(user);
 
-            Log.Debug("[UsersController] 創建會員成功, 名稱: {Name}", result.Name);
 
             return Success(result, "創建會員成功", 200);
         }
@@ -141,17 +128,10 @@ namespace PawsPort.Controllers
         [Tags("會員管理")]
         public async Task<IActionResult> Summary()
         {
-            Log.Debug("[UsersController] Summary GET - Entry");
 
             // 取得會員統計資訊
-            Log.Debug("[UsersController] 調用 MemberProfileService.GetMemberSummaryAsync");
             var summary = await _memberProfileService.GetMemberSummaryAsync();
 
-            Log.Debug("[UsersController] 成功取得統計資訊, 會員總數: {MemberCount}, 月註冊數: {MonthSignUp}, 認證比例: {VerifyPercentage}, 訂閱電子報人數: {SubscribedCount}",
-                summary.MemberCount,
-                summary.MemberMonthSignUp,
-                summary.VerifyPercentage,
-                summary.SubscribedMemberCount);
 
             return Success(summary, "成功取得統計資訊", 200);
         }
@@ -176,28 +156,23 @@ namespace PawsPort.Controllers
         [Tags("會員管理")]
         public async Task<IActionResult> UpdateMembers(int? id, MemberUserDTO userDto)
         {
-            Log.Debug("[UsersController] UpdateMembers PUT - Entry, UserId: {UserId}, 會員名稱: {Name}", id, userDto.Name);
 
             // 只允許本人或系統管理員修改
             var isAdmin = await _authService.IsMemberAdminAsync();
             if (_authService.TryGetCurrentUserId() != id && !isAdmin)
             {
-                Log.Warning("[UsersController] 拒絕修改他人資料, 操作者: {CurrentUserId}, 目標: {UserId}", _authService.TryGetCurrentUserId(), id);
                 return Failure("FORBIDDEN", "無權限修改此會員資料", 403);
             }
 
             if (id != userDto.UserId)
             {
-                Log.Warning("[UsersController] 會員ID不一致, 路徑ID: {PathId}, DTO ID: {DtoId}", id, userDto.UserId);
                 return Failure("USER_ID_MISMATCH", "會員ID不一致", 400);
             }
 
-            Log.Debug("[UsersController] 調用 MemberProfileService.CheckUserInfoAsync, UserId: {UserId}", id);
             bool exist = await _memberProfileService.CheckUserInfoAsync(id, null);
 
             if (!exist)
             {
-                Log.Warning("[UsersController] 會員不存在, UserId: {UserId}", id);
                 return Failure("USER_NOT_FOUND", "找不到使用者", 404);
             }
 
@@ -210,10 +185,8 @@ namespace PawsPort.Controllers
                 userDto.IsVerify = current.IsVerify;
             }
 
-            Log.Debug("[UsersController] 調用 MemberProfileService.UpdateUserInfoAsync, UserId: {UserId}", id);
             var result = await _memberProfileService.UpdateUserInfoAsync(id.Value, userDto);
 
-            Log.Debug("[UsersController] 更新會員成功, 會員ID: {UserId}, 名稱: {Name}", userDto.UserId, userDto.Name);
             return Success(result, "Success", 200);
 
         }
@@ -234,19 +207,15 @@ namespace PawsPort.Controllers
         [Tags("會員管理")]
         public async Task<IActionResult> DeleteMember(int? id)
         {
-            Log.Debug("[UsersController] DeleteMember DELETE - Entry, UserId: {UserId}", id);
 
-            Log.Debug("[UsersController] 調用 MemberProfileService.DeleteUserAsync, UserId: {UserId}", id);
             var result = await _memberProfileService.DeleteUserAsync(id);
 
             if (result)
             {
-                Log.Debug("[UsersController] 刪除會員成功, 會員ID: {UserId}", id);
                 return NoContent();
             }
             else
             {
-                Log.Warning("[UsersController] 刪除會員失敗, 會員ID: {UserId}", id);
                 return Failure("USER_NOT_FOUND", "找不到使用者", 404);
             }
         }
@@ -265,18 +234,14 @@ namespace PawsPort.Controllers
         [Tags("會員管理")]
         public async Task<IActionResult> QueryRoleById(int? id)
         {
-            Log.Debug("[UsersController] QueryRoleById GET - Entry, UserId: {UserId}", id);
 
-            Log.Debug("[UsersController] 調用 MemberPermissionService.GetUserPermissionsAsync, UserId: {UserId}", id);
             var userPermission = await _memberPermissionService.GetUserPermissionsAsync(id);
 
             if (userPermission == null)
             {
-                Log.Warning("[UsersController] 找不到指定的使用者權限, UserId: {UserId}", id);
                 return Failure("PERMISSION_NOT_FOUND", "找不到指定的使用者", 404);
             }
 
-            Log.Debug("[UsersController] 成功取得使用者權限, UserId: {UserId}", id);
             return Success(userPermission, "Success", 200);
         }
 
@@ -298,27 +263,21 @@ namespace PawsPort.Controllers
         [Tags("會員管理")]
         public async Task<IActionResult> CreateRole(MemberUserSystemRoleDTO US)
         {
-            Log.Debug("[UsersController] CreateRole POST - Entry, UserId: {UserId}, SystemId: {SystemId}, RoleId: {RoleId}", US.UserId, US.SystemId, US.RoleId);
 
-            Log.Debug("[UsersController] 調用 MemberPermissionService.CheckMemberPermissionExistAsync");
             bool exist = await _memberPermissionService.CheckMemberPermissionExistAsync(US);
 
             if (exist)
             {
-                Log.Warning("[UsersController] 嘗試新增已存在的使用者權限: UserId={UserId}, SystemId={SystemId}, RoleId={RoleId}", US.UserId, US.SystemId, US.RoleId);
                 return Failure("PERMISSION_ALREADY_EXISTS", "該使用者已擁有此系統的相同角色權限", 409);
             }
 
-            Log.Debug("[UsersController] 調用 MemberPermissionService.CreateMemberPermissionAsync");
             var result = await _memberPermissionService.CreateMemberPermissionAsync(US);
 
             if (result == false)
             {
-                Log.Warning("[UsersController] 新增使用者權限失敗: UserId={UserId}, SystemId={SystemId}, RoleId={RoleId}", US.UserId, US.SystemId, US.RoleId);
                 return NoContent();
             }
 
-            Log.Debug("[UsersController] 成功新增使用者權限: UserId={UserId}, SystemId={SystemId}, RoleId={RoleId}", US.UserId, US.SystemId, US.RoleId);
             return Success(result, "Success", 200);
         }
 
@@ -342,35 +301,28 @@ namespace PawsPort.Controllers
 
         public async Task<IActionResult> EditRole(int? mappingId, MemberPermissionUpdateRoleDTO user)
         {
-            Log.Debug("[UsersController] EditRole PATCH - Entry, MappingId: {MappingId}, UserId: {UserId}, SystemId: {SystemId}, RoleId: {RoleId}", mappingId, user.UserId, user.SystemId, user.RoleId);
 
             // 驗證路由參數：mappingId 不可為 null 或小於 0
             if (mappingId == null || mappingId < 0)
             {
-                Log.Warning("[UsersController] 無效的權限對應 ID: {MappingId}", mappingId);
                 return Failure("INVALID_MAPPING_ID", "無效ID", 400);
             }
 
-            Log.Debug("[UsersController] 調用 MemberPermissionService.CheckMemberPermissionExistAsync");
             bool exist = await _memberPermissionService.CheckMemberPermissionExistAsync(user);
 
             if (exist)
             {
-                Log.Warning("[UsersController] 嘗試更新為已存在的使用者權限: UserId={UserId}, SystemId={SystemId}, RoleId={RoleId}", user.UserId, user.SystemId, user.RoleId);
                 return Failure("PERMISSION_ALREADY_EXISTS", "該使用者已擁有相同角色權限", 409);
             }
 
-            Log.Debug("[UsersController] 調用 MemberPermissionService.UpdateMemberPermissionRoleAsync, MappingId: {MappingId}", mappingId);
             bool result = await _memberPermissionService.UpdateMemberPermissionRoleAsync(mappingId, user);
 
 
             if (!result)
             {
-                Log.Warning("[UsersController] 找不到指定的使用者權限: MappingId={MappingId}", mappingId);
                 return Failure("User_NOT_FOUND", "找不到指定的Id或是使用者", 404);
             }
 
-            Log.Debug("[UsersController] 成功更新使用者權限: MappingId={MappingId}, UserId={UserId}, SystemId={SystemId}, RoleId={RoleId}", mappingId, user.UserId, user.SystemId, user.RoleId);
             return NoContent();
 
         }
@@ -392,25 +344,20 @@ namespace PawsPort.Controllers
         [Tags("會員管理")]
         public async Task<IActionResult> DeleteRole(int? mappingId)
         {
-            Log.Debug("[UsersController] DeleteRole DELETE - Entry, MappingId: {MappingId}", mappingId);
 
             // 驗證路由參數：mappingId 不可為 null
             if (mappingId == null)
             {
-                Log.Warning("[UsersController] 刪除使用者權限失敗，無效的權限對應 ID: {MappingId}", mappingId);
                 return Failure("INVALID_MAPPING_ID", "無效ID", 400);
             }
 
-            Log.Debug("[UsersController] 調用 MemberPermissionService.DeleteMemberPermissionRoleAsync, MappingId: {MappingId}", mappingId);
             bool result = await _memberPermissionService.DeleteMemberPermissionRoleAsync(mappingId);
 
             if (!result)
             {
-                Log.Warning("[UsersController] 找不到指定的使用者權限，刪除失敗: MappingId={MappingId}", mappingId);
                 return Failure("PERMISSION_NOT_FOUND", "找不到指定的權限", 404);
             }
 
-            Log.Debug("[UsersController] 成功刪除使用者權限: MappingId={MappingId}", mappingId);
             return NoContent();
         }
 
@@ -425,12 +372,9 @@ namespace PawsPort.Controllers
         [Tags("寵物領養")]
         public async Task<IActionResult> GetAdoptionPets()
         {
-            Log.Debug("[UsersController] GetAdoptionPets GET - Entry");
 
-            Log.Debug("[UsersController] 調用 PetAdoptionService.GetAdoptionPetsAsync");
             var pets = await _petAdoptionService.GetAdoptionPetsAsync();
 
-            Log.Debug("[UsersController] 取得寵物清單成功, 共 {Count} 隻", pets.Count);
             return Success(pets, "Success", 200);
         }
 
@@ -446,12 +390,9 @@ namespace PawsPort.Controllers
         [Tags("寵物領養")]
         public async Task<IActionResult> CreateAdoptionPet([FromBody] PetCreateDto dto)
         {
-            Log.Debug("[UsersController] CreateAdoptionPet POST - Entry");
 
-            Log.Debug("[UsersController] 調用 PetAdoptionService.CreateAdoptionPetAsync");
             var createdPet = await _petAdoptionService.CreateAdoptionPetAsync(dto);
 
-            Log.Debug("[UsersController] 刊登送養寵物成功, 名稱: {Name}, PetId: {PetId}", createdPet.Name, createdPet.PetId);
             return Success(createdPet, "成功刊登送養寵物", 200);
         }
 
@@ -464,10 +405,8 @@ namespace PawsPort.Controllers
         [Tags("寵物健康護照")]
         public async Task<IActionResult> GetPetPassports([FromQuery] int userId)
         {
-            Log.Debug("[UsersController] GetPetPassports GET - Entry");
 
             var passports = await _petPassportService.GetPetPassportsAsync(userId);
-            Log.Debug("[UsersController] 取得寵物健康護照成功，共 {Count} 筆", passports.Count);
 
             return Success(passports, "Success", 200);
         }
@@ -482,12 +421,10 @@ namespace PawsPort.Controllers
         [Tags("寵物健康護照")]
         public async Task<IActionResult> GetPassportDetail(int id, [FromQuery] int userId)
         {
-            Log.Debug("[UsersController] GetPassportDetail GET - Id: {Id}", id);
 
             var detail = await _petPassportService.GetPassportDetailAsync(id, userId);
             if (detail == null)
             {
-                Log.Warning("[UsersController] 找不到指定的寵物護照紀錄，Id: {Id}", id);
                 return Failure("PASSPORT_NOT_FOUND", "找不到指定的健康護照紀錄", 404);
             }
 
@@ -504,7 +441,6 @@ namespace PawsPort.Controllers
         [Tags("寵物健康護照")]
         public async Task<IActionResult> UpdatePassport(int id, [FromBody] PetPassportUpsertDto dto)
         {
-            Log.Debug("[UsersController] UpdatePassport PUT - Id: {Id}", id);
             int currentUserId = dto.UserId;
 
             var isUpdated = await _petPassportService.UpdatePassportAsync(id, dto, currentUserId);
@@ -513,7 +449,6 @@ namespace PawsPort.Controllers
                 return Failure("PASSPORT_UPDATE_FAILED", "修改失敗，紀錄不存在或無權限", 404);
             }
 
-            Log.Debug("[UsersController] 更新寵物健康護照成功，Id: {Id}", id);
             return Success(true, "更新成功", 200);
         }
 
@@ -526,11 +461,9 @@ namespace PawsPort.Controllers
         [Tags("寵物健康護照")]
         public async Task<IActionResult> CreatePassport([FromBody] PetPassportUpsertDto dto)
         {
-            Log.Debug("[UsersController] CreatePassport POST - PetId: {PetId}", dto.PetId);
             int currentUserId = dto.UserId;
 
             var createdDetail = await _petPassportService.CreatePassportAsync(dto, currentUserId);
-            Log.Debug("[UsersController] 建立健康護照紀錄成功，新護照標記碼: {Id}", createdDetail.Id);
 
             return Success(createdDetail, "建立成功", 200);
         }
@@ -591,7 +524,6 @@ namespace PawsPort.Controllers
         [Tags("會員管理")]
         public async Task<IActionResult> GetPlayerByUserId(int userId)
         {
-            Log.Debug("[UsersController] GetPlayerByUserId GET - Entry, UserId: {UserId}", userId);
 
             try
             {
@@ -599,16 +531,13 @@ namespace PawsPort.Controllers
 
                 if (playerData == null)
                 {
-                    Log.Warning("[UsersController] 找不到對應的玩家, UserId: {UserId}", userId);
                     return Failure("PLAYER_NOT_FOUND", "找不到對應的玩家資料", 404);
                 }
 
-                Log.Debug("[UsersController] 成功取得玩家資料, UserId: {UserId}, PlayerId: {PlayerId}", userId, playerData.PlayerId);
                 return Success(playerData, "Success", 200);
             }
             catch (Exception ex)
             {
-                Log.Error("[UsersController] 取得玩家資料出錯, UserId: {UserId}, Error: {Error}", userId, ex.Message);
                 return Failure("ERROR", "取得玩家資料失敗", 500);
             }
 
@@ -668,13 +597,11 @@ namespace PawsPort.Controllers
             // 1. 防呆：確保有收到檔案
             if (file == null || file.Length == 0)
             {
-                Log.Warning("[UsersController] Upload - 未接收到檔案或檔案大小為 0");
                 return Failure("FILE_EMPTY", "未接收到檔案", 400);
             }
 
             try
             {
-                Log.Debug("[UsersController] Upload - 開始呼叫 FileService 儲存圖片");
 
                 // 2. 呼叫 Service 進行驗證與安全存檔（此時 FileService 內部已改用 await using 與正確路徑）
                 string imageUrl = await _fileService.SaveImageForQuillAsync(file, HttpContext.Request);
@@ -682,11 +609,9 @@ namespace PawsPort.Controllers
                 // 3. 檢查 Service 回傳結果
                 if (string.IsNullOrEmpty(imageUrl))
                 {
-                    Log.Warning("[UsersController] Upload - 圖片儲存失敗，副檔名不符或儲存程序異常");
                     return Failure("INVALID_FILE_FORMAT", "檔案格式不正確或圖片儲存失敗", 400);
                 }
 
-                Log.Debug("[UsersController] Upload - 圖片上傳成功，網址: {Url}", imageUrl);
 
                 // 4. 成功後回傳 Quill 認得的物件格式 { url: "https://..." }
                 return Success(new { url = imageUrl }, "Success", 200);
@@ -695,7 +620,6 @@ namespace PawsPort.Controllers
             {
 
                 // 這樣做能確保後端發生任何不可預期的內部錯誤時，只會優雅地回傳 500，而「黑色的命令提示字元視窗」絕對不會自己關掉！
-                Log.Error(ex, "[UsersController] Upload - 圖片上傳期間發生未預期致命錯誤: {Message}", ex.Message);
 
                 return Failure("INTERNAL_ERROR", "伺服器內部錯誤，圖片上傳失敗", 500);
 

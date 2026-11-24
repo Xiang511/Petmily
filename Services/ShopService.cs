@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PawsPort.Dtos;
 using PawsPort.Models;
-using Serilog;
 
 namespace PawsPort.Services
 {
@@ -49,7 +48,6 @@ namespace PawsPort.Services
 
             _db.SkinShops.Add(skin);
             await _db.SaveChangesAsync();
-            Log.Information("ShopService: 商品 '{SkinName}' 新增成功", dto.SkinName);
         }
 
         // 更新商品
@@ -58,7 +56,6 @@ namespace PawsPort.Services
             var skin = await _db.SkinShops.FirstOrDefaultAsync(s => s.SkinId == dto.SkinId);
             if (skin == null)
             {
-                Log.Warning("ShopService: 更新失敗，找不到商品 ID: {SkinId}", dto.SkinId);
                 throw new Exception("商品不存在");
             }
 
@@ -74,7 +71,6 @@ namespace PawsPort.Services
             }
 
             await _db.SaveChangesAsync();
-            Log.Information("ShopService: 商品 ID: {SkinId} 更新完成", dto.SkinId);
         }
 
         // 刪除商品
@@ -83,14 +79,12 @@ namespace PawsPort.Services
             var skin = await _db.SkinShops.FirstOrDefaultAsync(s => s.SkinId == id && s.IsDel != true);
             if (skin == null)
             {
-                Log.Warning("ShopService: 刪除失敗，找不到商品 ID: {SkinId}", id);
                 throw new Exception("商品不存在");
             }
 
             DeleteImage(skin.SkinImage);
             skin.IsDel = true;
             await _db.SaveChangesAsync();
-            Log.Information("ShopService: 商品 ID: {SkinId} 已刪除", id);
         }
 
         // --- 非同步檔案處理輔助方法 ---

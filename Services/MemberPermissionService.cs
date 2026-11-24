@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PawsPort.Dtos;
 using PawsPort.Models;
-using Serilog;
 
 namespace PawsPort.Services
 {
@@ -130,7 +129,6 @@ namespace PawsPort.Services
         public async Task<List<MemberPermissionUserDTO>> GetUserPermissionsAsync(int? userId)
         {
             // 方法入口 (Entry)
-            Log.Information("[PermissionService] GetUserPermissions - Entry. Target UserId: {UserId}", userId);
 
             var result = await _context.UserTables
                 .Where(u => u.UserId == userId && u.DeleteDay == null)
@@ -161,14 +159,10 @@ namespace PawsPort.Services
             // 注意：ToListAsync() 沒找到資料會回傳「空清單 []」而不是 null
             if (result == null || result.Count == 0)
             {
-                Log.Warning("[PermissionService] GetUserPermissions - Exit. No permissions found. UserId: {UserId}", userId);
                 return new List<MemberPermissionUserDTO>(); // 建議回傳空清單，避免前端發生 NullReference
             }
 
             // 修正點：Log 改為記錄「取得幾筆」資料，而不是單一 MappingId
-            Log.Information(
-                "[PermissionService] GetUserPermissions - Exit. Success. Found {Count} permissions for UserId: {UserId}",
-                result.Count, userId);
 
             return result;
         }

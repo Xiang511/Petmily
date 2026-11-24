@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using PawsPort.Dtos;
 using PawsPort.Responses;
 using PawsPort.Services;
-using Serilog;
 
 namespace PawsPort.Controllers
 {
@@ -64,7 +63,6 @@ namespace PawsPort.Controllers
 
             var result = await _faqService.CreateFaqAsync(dto);
 
-            Log.Information("新增FAQ成功 FAQ_ID:{Faqid}", result.Faqid);
 
             return Success(result, "創建FAQ成功", 201);
         }

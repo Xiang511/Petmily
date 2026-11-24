@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using PawsPort.Dtos;
 using PawsPort.Services;
-using Serilog;
 
 namespace PawsPort.Controllers
 {
@@ -56,7 +55,6 @@ namespace PawsPort.Controllers
         public async Task<IActionResult> Create([FromBody] PetCreateDto dto)
         {
             await _service.CreatePetAsync(dto);
-            Log.Information("創建寵物資料成功 Name:{Name}", dto.Name);
 
             return Success(dto, "新增寵物資料成功！", 200);
         }
@@ -75,7 +73,6 @@ namespace PawsPort.Controllers
             }
 
             await _service.UpdatePetAsync(dto);
-            Log.Information("更新寵物資料成功 PetId:{PetId}", id);
 
             return NoContent();
         }
@@ -95,7 +92,6 @@ namespace PawsPort.Controllers
         {
             // 注意這裡對應的是你 Service 裡的 SoftDeletePet
             await _service.SoftDeletePetAsync(id);
-            Log.Information("軟刪除寵物資料成功 PetId:{PetId}", id);
 
             return NoContent();
         }

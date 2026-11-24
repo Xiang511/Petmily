@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Text.RegularExpressions;
-using Serilog;
 
 namespace PawsPort.Helpers
 {
@@ -61,7 +60,6 @@ namespace PawsPort.Helpers
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[ImageUploadHelper] 解析並儲存 Base64 圖片失敗。");
                 throw new Exception("圖片儲存處理失敗：" + ex.Message, ex);
             }
         }

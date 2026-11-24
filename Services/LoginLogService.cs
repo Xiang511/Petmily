@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PawsPort.Dtos;
 using PawsPort.Models;
-using Serilog;
 using System.Text.Json;
 
 namespace PawsPort.Services
@@ -34,7 +33,6 @@ namespace PawsPort.Services
         {
             try
             {
-                Log.Information("[LoginLogService] 開始記錄登入，UserId: {UserId}, IP: {IP}", userId, ipAddress);
 
                 // 取得 IP 地理位置資訊
                 var locationInfo = await GetIpLocationAsync(ipAddress);
@@ -57,12 +55,10 @@ namespace PawsPort.Services
                 _context.LoginActivities.Add(loginLog);
                 await _context.SaveChangesAsync();
 
-                Log.Information("[LoginLogService] 登入記錄成功，LogId: {LogId}", loginLog.LogId);
                 return true;
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[LoginLogService] 記錄登入失敗，UserId: {UserId}", userId);
                 return false;
             }
         }
@@ -84,14 +80,12 @@ namespace PawsPort.Services
                 {
                     recentLogin.Status = null;
                     await _context.SaveChangesAsync();
-                    Log.Information("[LoginLogService] 已將 UserId={UserId} 的最近登入記錄標記為已登出", userId);
                 }
 
                 return true;
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[LoginLogService] 標記登出失敗，UserId: {UserId}", userId);
                 return false;
             }
         }
@@ -122,12 +116,10 @@ namespace PawsPort.Services
                 _context.LoginActivities.Add(loginLog);
                 await _context.SaveChangesAsync();
 
-                Log.Warning("[LoginLogService] 記錄失敗登入，Email: {Email}, Reason: {Reason}", email, failureReason);
                 return true;
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[LoginLogService] 記錄失敗登入時發生錯誤");
                 return false;
             }
         }
@@ -142,20 +134,17 @@ namespace PawsPort.Services
                 // 跳過本地 IP
                 if (ipAddress == "::1" || ipAddress == "127.0.0.1" || ipAddress.StartsWith("192.168."))
                 {
-                    Log.Debug("[LoginLogService] 偵測到本地 IP: {IP}，跳過地理位置查詢", ipAddress);
                     return null;
                 }
 
                 var apiKey = _configuration["IPSTACK:Key"];
                 if (string.IsNullOrEmpty(apiKey))
                 {
-                    Log.Warning("[LoginLogService] IpStack API Key 未設定");
                     return null;
                 }
 
                 var url = $"http://api.ipstack.com/{ipAddress}?access_key={apiKey}";
 
-                Log.Debug("[LoginLogService] 呼叫 ipstack API: {IP}", ipAddress);
 
                 var response = await _httpClient.GetAsync(url);
                 response.EnsureSuccessStatusCode();
@@ -166,17 +155,14 @@ namespace PawsPort.Services
                     PropertyNameCaseInsensitive = true
                 });
 
-                Log.Debug("[LoginLogService] ipstack 回應: {Country}, {City}", result?.CountryName, result?.City);
                 return result;
             }
             catch (HttpRequestException ex)
             {
-                Log.Error(ex, "[LoginLogService] 呼叫 ipstack API 失敗");
                 return null;
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[LoginLogService] 解析 ipstack 回應失敗");
                 return null;
             }
         }

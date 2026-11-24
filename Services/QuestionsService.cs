@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PawsPort.Dtos;
 using PawsPort.Models;
-using Serilog;
 
 namespace PawsPort.Services
 {
@@ -63,7 +62,6 @@ namespace PawsPort.Services
 
             _db.GameContents.Add(newGame);
             await _db.SaveChangesAsync();
-            Log.Information("已新增題目: {GameName}", QuestionsCreateDto.GameName);
         }
 
         // 更新題目 (Async 版)
@@ -75,7 +73,6 @@ namespace PawsPort.Services
             if (game == null)
                 throw new Exception("題目不存在");
 
-            Log.Information("找到題目 ID: {GameId}, 準備更新", QuestionsEditDto.GameId);
             game.GameName = QuestionsEditDto.GameName;
             game.Questions = QuestionsEditDto.Questions;
             game.AnswersDetail = QuestionsEditDto.AnswersDetail;
@@ -85,7 +82,6 @@ namespace PawsPort.Services
             game.Type = QuestionsEditDto.Type;
 
             await _db.SaveChangesAsync(); 
-            Log.Information("題目 {GameId} 更新完成", QuestionsEditDto.GameId);
         }
 
         // 刪除題目 (Async 版)
@@ -99,7 +95,6 @@ namespace PawsPort.Services
 
             _db.GameContents.Remove(game);
             await _db.SaveChangesAsync();
-            Log.Information("題目 ID: {GameId} 已刪除", id);
         }
 
         

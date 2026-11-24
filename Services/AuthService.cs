@@ -4,7 +4,6 @@ using Microsoft.IdentityModel.Tokens;
 using NuGet.Common;
 using PawsPort.Dtos;
 using PawsPort.Models;
-using Serilog;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -165,7 +164,6 @@ namespace PawsPort.Services
                     _context.UserAuthTables.Remove(existingUnverified.auth);
                     _context.UserTables.Remove(existingUnverified.user);
                     await _context.SaveChangesAsync();
-                    Log.Information("[AuthService] RegisterUser - 已清除舊的未驗證帳號: {Email}", model.Email);
                 }
 
                 // 3. 建立 UserTable，IsVerify 設為 false（等待 Email 驗證）
@@ -209,16 +207,13 @@ namespace PawsPort.Services
 
                 if (!emailSent)
                 {
-                    Log.Error("[AuthService] RegisterUser - 驗證碼郵件發送失敗: {Email}", model.Email);
                     return (false, "驗證碼郵件發送失敗，請稍後再試");
                 }
 
-                Log.Information("[AuthService] RegisterUser - 已建立未驗證帳號並發送驗證碼: {Email}", model.Email);
                 return (true, "驗證碼已發送至您的電子郵件，請於 10 分鐘內完成驗證");
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[AuthService] RegisterUser - 註冊失敗: Email={Email}", model.Email);
                 return (false, "系統錯誤，請稍後再試");
             }
         }
@@ -267,7 +262,6 @@ namespace PawsPort.Services
                 // 4. 檢查驗證碼是否過期
                 if (userAuth.EmailTokenExpiry == null || userAuth.EmailTokenExpiry < DateTime.Now)
                 {
-                    Log.Warning("[AuthService] VerifyRegisterEmail - 驗證碼已過期: {Email}", email);
                     // 清除過期的驗證碼
                     userAuth.EmailConfirmationToken = null;
                     userAuth.EmailTokenExpiry = null;
@@ -278,7 +272,6 @@ namespace PawsPort.Services
                 // 5. 比對驗證碼
                 if (userAuth.EmailConfirmationToken != verificationCode)
                 {
-                    Log.Warning("[AuthService] VerifyRegisterEmail - 驗證碼錯誤: {Email}", email);
                     return (false, "驗證碼錯誤，請重新確認", 0);
                 }
 
@@ -308,14 +301,11 @@ namespace PawsPort.Services
                 _context.Inventories.Add(inventory);
                 await _context.SaveChangesAsync();
 
-                Log.Information("[AuthService] VerifyRegisterEmail - Email 驗證成功，帳號已啟用: {Email}, UserId={UserId}",
-                    email, userEntity.UserId);
 
                 return (true, "Email 驗證成功，帳號已啟用", userEntity.UserId);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[AuthService] VerifyRegisterEmail - 驗證失敗: {Email}", email);
                 return (false, "系統錯誤，請稍後再試", 0);
             }
         }
@@ -354,7 +344,6 @@ namespace PawsPort.Services
 
                 if (userAuth == null)
                 {
-                    Log.Warning("[AuthService] SendLoginVerificationCode - 用戶不存在: {Email}", email);
                     return (false, "帳號或密碼錯誤", string.Empty, false);
                 }
 
@@ -362,7 +351,6 @@ namespace PawsPort.Services
                 bool isPasswordValid = BCrypt.Net.BCrypt.Verify(password, userAuth.Password);
                 if (!isPasswordValid)
                 {
-                    Log.Warning("[AuthService] SendLoginVerificationCode - 密碼錯誤: {Email}", email);
                     return (false, "帳號或密碼錯誤", string.Empty, false);
                 }
 
@@ -386,7 +374,6 @@ namespace PawsPort.Services
 
                     var directToken = GenerateJwtToken(email, userAuth.UserId, userPermissions);
 
-                    Log.Information("[AuthService] SendLoginVerificationCode - 距上次登入未超過 20 分鐘，跳過 Email 驗證: {Email}", email);
                     return (true, "登入成功", directToken, true);
                 }
 
@@ -411,16 +398,13 @@ namespace PawsPort.Services
 
                 if (!emailSent)
                 {
-                    Log.Error("[AuthService] SendLoginVerificationCode - 郵件發送失敗: {Email}", email);
                     return (false, "驗證碼發送失敗，請稍後再試", string.Empty, false);
                 }
 
-                Log.Information("[AuthService] SendLoginVerificationCode - 驗證碼已發送: {Email}", email);
                 return (true, "驗證碼已發送至您的電子郵件", string.Empty, false);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[AuthService] SendLoginVerificationCode - 發送驗證碼失敗: {Email}", email);
                 return (false, "系統錯誤，請稍後再試", string.Empty, false);
             }
         }
@@ -439,21 +423,18 @@ namespace PawsPort.Services
 
                 if (userAuth == null)
                 {
-                    Log.Warning("[AuthService] VerifyLoginCode - 用戶不存在: {Email}", email);
                     return (false, string.Empty, "驗證失敗");
                 }
 
                 // 2. 檢查驗證碼是否存在
                 if (string.IsNullOrEmpty(userAuth.EmailConfirmationToken))
                 {
-                    Log.Warning("[AuthService] VerifyLoginCode - 驗證碼不存在: {Email}", email);
                     return (false, string.Empty, "請先獲取驗證碼");
                 }
 
                 // 3. 檢查驗證碼是否過期
                 if (userAuth.EmailTokenExpiry == null || userAuth.EmailTokenExpiry < DateTime.Now)
                 {
-                    Log.Warning("[AuthService] VerifyLoginCode - 驗證碼已過期: {Email}", email);
                     // 清除過期的驗證碼
                     userAuth.EmailConfirmationToken = null;
                     userAuth.EmailTokenExpiry = null;
@@ -464,7 +445,6 @@ namespace PawsPort.Services
                 // 4. 驗證碼匹配
                 if (userAuth.EmailConfirmationToken != verificationCode)
                 {
-                    Log.Warning("[AuthService] VerifyLoginCode - 驗證碼錯誤: {Email}", email);
                     return (false, string.Empty, "驗證碼錯誤");
                 }
 
@@ -486,12 +466,10 @@ namespace PawsPort.Services
                 // 7. 生成 JWT Token
                 var token = GenerateJwtToken(email, userAuth.UserId, userPermissions);
 
-                Log.Information("[AuthService] VerifyLoginCode - 驗證成功: {Email}", email);
                 return (true, token, "登入成功");
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[AuthService] VerifyLoginCode - 驗證失敗: {Email}", email);
                 return (false, string.Empty, "系統錯誤，請稍後再試");
             }
         }
@@ -514,12 +492,10 @@ namespace PawsPort.Services
                 }
 
                 await _context.SaveChangesAsync();
-                Log.Information("[AuthService] ClearExpiredVerificationCodes - 已清除 {Count} 個過期驗證碼", expiredRecords.Count);
                 return expiredRecords.Count;
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[AuthService] ClearExpiredVerificationCodes - 清除失敗");
                 return 0;
             }
         }
@@ -551,7 +527,6 @@ namespace PawsPort.Services
                 // 安全考量：無論用戶是否存在，都返回相同的成功消息（防止郵箱枚舉）
                 if (userAuth == null)
                 {
-                    Log.Warning("[AuthService] RequestPasswordReset - 用戶不存在: {Email}", email);
                     // 故意返回成功，不洩露用戶是否存在
                     await Task.Delay(Random.Shared.Next(500, 1500)); // 模擬處理時間
                     return (true, "如果該電子郵件存在於我們的系統中，您將收到密碼重置連結");
@@ -578,16 +553,13 @@ namespace PawsPort.Services
 
                 if (!emailSent)
                 {
-                    Log.Error("[AuthService] RequestPasswordReset - 郵件發送失敗: {Email}", email);
                     return (false, "郵件發送失敗，請稍後再試");
                 }
 
-                Log.Information("[AuthService] RequestPasswordReset - 重置連結已發送: {Email}", email);
                 return (true, "密碼重置連結已發送至您的電子郵件");
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[AuthService] RequestPasswordReset - 請求失敗: {Email}", email);
                 return (false, "系統錯誤，請稍後再試");
             }
         }
@@ -608,28 +580,24 @@ namespace PawsPort.Services
 
                 if (userAuth == null)
                 {
-                    Log.Warning("[AuthService] VerifyResetToken - 用戶不存在: {Email}", email);
                     return (false, "無效的重置請求");
                 }
 
                 // 檢查 Token 是否存在
                 if (string.IsNullOrEmpty(userAuth.PasswordResetToken))
                 {
-                    Log.Warning("[AuthService] VerifyResetToken - Token 不存在: {Email}", email);
                     return (false, "無效的重置 Token");
                 }
 
                 // 檢查 Token 是否匹配
                 if (userAuth.PasswordResetToken != resetToken)
                 {
-                    Log.Warning("[AuthService] VerifyResetToken - Token 不匹配: {Email}", email);
                     return (false, "無效的重置 Token");
                 }
 
                 // 檢查是否過期
                 if (userAuth.PasswordResetExpires == null || userAuth.PasswordResetExpires < DateTime.Now)
                 {
-                    Log.Warning("[AuthService] VerifyResetToken - Token 已過期: {Email}", email);
                     // 清除過期的 Token
                     userAuth.PasswordResetToken = null;
                     userAuth.PasswordResetExpires = null;
@@ -637,12 +605,10 @@ namespace PawsPort.Services
                     return (false, "重置連結已過期，請重新申請");
                 }
 
-                Log.Information("[AuthService] VerifyResetToken - Token 有效: {Email}", email);
                 return (true, "Token 驗證成功");
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[AuthService] VerifyResetToken - 驗證失敗: {Email}", email);
                 return (false, "系統錯誤，請稍後再試");
             }
         }
@@ -672,7 +638,6 @@ namespace PawsPort.Services
 
                 if (userAuth == null)
                 {
-                    Log.Warning("[AuthService] ResetPassword - 用戶不存在: {Email}", email);
                     return (false, "無效的重置請求");
                 }
 
@@ -685,12 +650,10 @@ namespace PawsPort.Services
                 userAuth.PasswordResetExpires = null;
                 await _context.SaveChangesAsync();
 
-                Log.Information("[AuthService] ResetPassword - 密碼已重置: {Email}", email);
                 return (true, "密碼重置成功，請使用新密碼登入");
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[AuthService] ResetPassword - 重置失敗: {Email}", email);
                 return (false, "系統錯誤，請稍後再試");
             }
         }
@@ -713,12 +676,10 @@ namespace PawsPort.Services
                 }
 
                 await _context.SaveChangesAsync();
-                Log.Information("[AuthService] ClearExpiredResetTokens - 已清除 {Count} 個過期重置 Token", expiredRecords.Count);
                 return expiredRecords.Count;
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[AuthService] ClearExpiredResetTokens - 清除失敗");
                 return 0;
             }
         }

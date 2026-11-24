@@ -1,7 +1,6 @@
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
-using Serilog;
 namespace PawsPort.Services
 {
     public class EmailService
@@ -85,13 +84,11 @@ namespace PawsPort.Services
                     await client.SendAsync(message);
                     await client.DisconnectAsync(true);
 
-                    Log.Information("[EmailService] 驗證碼郵件已發送至: {Email}", toEmail);
                     return true;
                 }
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[EmailService] 發送驗證碼郵件失敗: {Email}", toEmail);
                 return false;
             }
         }
@@ -166,13 +163,11 @@ namespace PawsPort.Services
                     await client.SendAsync(message);
                     await client.DisconnectAsync(true);
 
-                    Log.Information("[EmailService] 註冊驗證碼郵件已發送至: {Email}", toEmail);
                     return true;
                 }
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[EmailService] 發送註冊驗證碼郵件失敗: {Email}", toEmail);
                 return false;
             }
         }
@@ -242,13 +237,11 @@ namespace PawsPort.Services
                     await client.SendAsync(message);
                     await client.DisconnectAsync(true);
 
-                    Log.Information("[EmailService] 密碼重置郵件已發送至: {Email}", toEmail);
                     return true;
                 }
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[EmailService] 發送密碼重置郵件失敗: {Email}", toEmail);
                 return false;
             }
         }

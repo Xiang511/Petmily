@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using PawsPort.Dtos;
 using PawsPort.Models;
 using PawsPort.Services;
-using Serilog;
 
 namespace PawsPort.Controllers
 {
@@ -49,7 +48,6 @@ namespace PawsPort.Controllers
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "PlayerController: 取得列表失敗");
                 return Failure("PLAYER_LIST_FAILED", "伺服器讀取玩家資料失敗", 500);
             }
         }
@@ -84,7 +82,6 @@ namespace PawsPort.Controllers
                 if (ex.Message == "玩家不存在" || ex.Message == "庫存不存在")
                     return Failure("PLAYER_NOT_FOUND", ex.Message, 404);
 
-                Log.Error(ex, "PlayerController: 更新玩家 {id} 失敗", id);
                 return Failure("PLAYER_UPDATE_FAILED", "更新過程發生錯誤", 500);
             }
         }
@@ -102,7 +99,6 @@ namespace PawsPort.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Delete(int id)
         {
-            Log.Information("正在準備刪除玩家 ID: {id}", id);
             try
             {
                 await _playerService.DeletePlayerAsync(id);
@@ -113,7 +109,6 @@ namespace PawsPort.Controllers
                 if (ex.Message == "玩家不存在")
                     return Failure("PLAYER_NOT_FOUND", "找不到玩家", 404);
 
-                Log.Error(ex, "PlayerController: 刪除玩家 {id} 失敗", id);
                 return Failure("PLAYER_DELETE_FAILED", "刪除過程發生錯誤", 500);
             }
         }
@@ -151,7 +146,6 @@ namespace PawsPort.Controllers
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "PlayerController: 搜尋玩家失敗");
                 return Failure("PLAYER_SEARCH_FAILED", "搜尋過程發生錯誤", 500);
             }
         }
@@ -175,7 +169,6 @@ namespace PawsPort.Controllers
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "取得紀錄失敗");
                 return Failure("GET_LOGS_FAILED", "伺服器錯誤", 500);
             }
         }
@@ -197,7 +190,6 @@ namespace PawsPort.Controllers
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "PlayerController: 取得遊戲歷史紀錄失敗");
                 return Failure("GAME_HISTORY_GET_FAILED", "取得紀錄發生錯誤", 500);
             }
         }
@@ -223,7 +215,6 @@ namespace PawsPort.Controllers
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "PlayerController: 儲存小遊戲結算失敗");
                 return Failure("GAME_RESULT_SAVE_FAILED", "儲存結算資料發生錯誤", 500);
             }
         }
@@ -252,7 +243,6 @@ namespace PawsPort.Controllers
                 if (ex.Message.Contains("不存在") || ex.Message.Contains("未擁有"))
                     return Failure("EQUIP_SKIN_FAILED", ex.Message, 404);
 
-                Log.Error(ex, "PlayerController: 裝備造型失敗");
                 return Failure("EQUIP_SKIN_FAILED", "裝備造型失敗", 500);
             }
         }
@@ -283,7 +273,6 @@ namespace PawsPort.Controllers
                 if (ex.Message.Contains("點數不足"))
                     return Failure("INSUFFICIENT_POINTS", "點數不足", 400);
 
-                Log.Error(ex, "PlayerController: 購買造型失敗");
                 return Failure("BUY_SKIN_FAILED", "購買失敗", 500);
             }
         }
@@ -306,7 +295,6 @@ namespace PawsPort.Controllers
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "PlayerController: 獲得玩家收藏庫失敗");
                 return Failure("GET_INVENTORY_FAILED", "獲得玩家收藏庫失敗", 500);
             }
         }
@@ -330,7 +318,6 @@ namespace PawsPort.Controllers
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "PlayerController: 取得玩家資料失敗");
                 return Failure("GET_PLAYER_FAILED", "取得玩家資料失敗", 500);
             }
         }

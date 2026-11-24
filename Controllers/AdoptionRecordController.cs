@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using PawsPort.DTOs;
 using PawsPort.Services;
-using Serilog;
 
 namespace PawsPort.Controllers
 {
@@ -56,7 +55,6 @@ namespace PawsPort.Controllers
         public async Task<IActionResult> Create([FromBody] AdoptionRecordCreateDto dto)
         {
             await _service.CreateRecordAsync(dto);
-            Log.Information("創建領養紀錄成功 PetId:{PetId}, UserId:{UserId}", dto.PetId, dto.UserId);
 
             return Success(dto, "新增領養紀錄成功！", 200);
         }
@@ -75,7 +73,6 @@ namespace PawsPort.Controllers
             }
 
             await _service.UpdateRecordAsync(dto);
-            Log.Information("更新領養紀錄成功 AdoptionId:{AdoptionId}", id);
 
             return NoContent();
         }
@@ -91,7 +88,6 @@ namespace PawsPort.Controllers
             // 呼叫 Service 執行軟刪除邏輯
             await _service.DeleteRecordAsync(id);
 
-            Log.Information("軟刪除領養紀錄成功 AdoptionId:{AdoptionId}", id);
 
             // 雖然是更新，但因為沒有要回傳新資料，回傳 204 No Content 依然是標準作法
             return NoContent();

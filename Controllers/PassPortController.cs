@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using PawsPort.Dtos;
 using PawsPort.Services;
-using Serilog;
 
 namespace PawsPort.Controllers
 {
@@ -97,7 +96,6 @@ namespace PawsPort.Controllers
         {
             await _service.CreatePassportAsync(dto);
 
-            Log.Information("創建護照成功 PetId:{PetId}", dto.PetId);
 
             return Success(dto, "新增資料成功！", 200);
         }
@@ -122,7 +120,6 @@ namespace PawsPort.Controllers
 
             await _service.UpdatePassportAsync(dto);
 
-            Log.Information("更新護照成功 PassportId:{PassportId}", id);
 
             return NoContent();
         }
@@ -142,7 +139,6 @@ namespace PawsPort.Controllers
         {
             await _service.DeletePassportAsync(id);
 
-            Log.Information("刪除護照成功 PassportId:{PassportId}", id);
 
             return NoContent();
         }

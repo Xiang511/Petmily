@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PawsPort.Dtos;
 using PawsPort.Models;
-using Serilog;
 using System.Text.Json;
 
 namespace PawsPort.Services
@@ -44,17 +43,13 @@ namespace PawsPort.Services
                 var clientId = _configuration["GoogleOAuth:ClientId"];
                 if (string.IsNullOrEmpty(clientId))
                 {
-                    Log.Error("[GoogleOAuthService] Google OAuth ClientId 未設定");
                     return null;
                 }
 
-                Log.Debug("[GoogleOAuthService] 開始驗證 Google Token，ClientId: {ClientId}", clientId);
-                Log.Debug("[GoogleOAuthService] Token 長度: {Length}", token?.Length);
 
                 // 先嘗試方法 1：使用 Access Token 呼叫 userinfo API (推薦)
                 try
                 {
-                    Log.Debug("[GoogleOAuthService] 嘗試使用 Access Token 呼叫 userinfo API");
                     var userinfoUrl = "https://www.googleapis.com/oauth2/v3/userinfo";
 
                     var request = new HttpRequestMessage(HttpMethod.Get, userinfoUrl);
@@ -62,12 +57,10 @@ namespace PawsPort.Services
 
                     var userinfoResponse = await _httpClient.SendAsync(request);
 
-                    Log.Debug("[GoogleOAuthService] Userinfo API 回應狀態: {StatusCode}", userinfoResponse.StatusCode);
 
                     if (userinfoResponse.IsSuccessStatusCode)
                     {
                         var content = await userinfoResponse.Content.ReadAsStringAsync();
-                        Log.Debug("[GoogleOAuthService] Userinfo API 回應內容: {Content}", content);
 
                         var googleUser = JsonSerializer.Deserialize<GoogleUserInfoDTO>(content, new JsonSerializerOptions
                         {
@@ -76,34 +69,27 @@ namespace PawsPort.Services
 
                         if (googleUser != null && !string.IsNullOrEmpty(googleUser.Email))
                         {
-                            Log.Information("[GoogleOAuthService] Access Token 驗證成功，Email: {Email}, Name: {Name}", 
-                                googleUser.Email, googleUser.Name);
                             return googleUser;
                         }
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    Log.Debug(ex, "[GoogleOAuthService] Access Token 驗證失敗，嘗試 ID Token 驗證");
+                    // 方法 1 失敗時不中斷，改用下方備用方法
                 }
 
                 // 方法 2：使用 ID Token 呼叫 tokeninfo API (備用)
-                Log.Debug("[GoogleOAuthService] 嘗試使用 ID Token 呼叫 tokeninfo API");
                 var tokeninfoUrl = $"https://oauth2.googleapis.com/tokeninfo?id_token={token}";
                 var tokeninfoResponse = await _httpClient.GetAsync(tokeninfoUrl);
 
-                Log.Debug("[GoogleOAuthService] Tokeninfo API 回應狀態: {StatusCode}", tokeninfoResponse.StatusCode);
 
                 if (!tokeninfoResponse.IsSuccessStatusCode)
                 {
                     var errorContent = await tokeninfoResponse.Content.ReadAsStringAsync();
-                    Log.Warning("[GoogleOAuthService] Google Token 驗證失敗，StatusCode: {StatusCode}, Error: {Error}", 
-                        tokeninfoResponse.StatusCode, errorContent);
                     return null;
                 }
 
                 var tokeninfoContent = await tokeninfoResponse.Content.ReadAsStringAsync();
-                Log.Debug("[GoogleOAuthService] Tokeninfo API 回應內容: {Content}", tokeninfoContent);
 
                 var googleUserFromToken = JsonSerializer.Deserialize<GoogleUserInfoDTO>(tokeninfoContent, new JsonSerializerOptions
                 {
@@ -112,7 +98,6 @@ namespace PawsPort.Services
 
                 if (googleUserFromToken == null)
                 {
-                    Log.Error("[GoogleOAuthService] 無法解析 Google 使用者資訊");
                     return null;
                 }
 
@@ -121,22 +106,17 @@ namespace PawsPort.Services
                 if (jsonDoc.RootElement.TryGetProperty("aud", out var audElement))
                 {
                     var aud = audElement.GetString();
-                    Log.Debug("[GoogleOAuthService] Token Audience: {Aud}, Expected: {ClientId}", aud, clientId);
 
                     if (aud != clientId)
                     {
-                        Log.Warning("[GoogleOAuthService] Token audience 不符，Expected: {ClientId}, Got: {Aud}", clientId, aud);
                         return null;
                     }
                 }
 
-                Log.Information("[GoogleOAuthService] ID Token 驗證成功，Email: {Email}, Name: {Name}", 
-                    googleUserFromToken.Email, googleUserFromToken.Name);
                 return googleUserFromToken;
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[GoogleOAuthService] 驗證 Google Token 時發生錯誤");
                 return null;
             }
         }
@@ -159,8 +139,6 @@ namespace PawsPort.Services
                 {
                     // 已存在的 Google 使用者 - 直接登入
                     userId = existingOAuth.UserId;
-                    Log.Information("[GoogleOAuthService] 現有 Google 使用者登入，UserId: {UserId}, Email: {Email}", 
-                        userId, googleUser.Email);
                 }
                 else
                 {
@@ -172,8 +150,6 @@ namespace PawsPort.Services
                     {
                         // Email 已存在（一般註冊使用者），將 Google OAuth 綁定到現有帳號
                         userId = existingUser.UserId;
-                        Log.Information("[GoogleOAuthService] 將 Google OAuth 綁定到現有帳號，UserId: {UserId}, Email: {Email}", 
-                            userId, googleUser.Email);
 
                         // 建立 OAuth 記錄
                         var oauthRecord = new OauthTable
@@ -191,7 +167,6 @@ namespace PawsPort.Services
                     else
                     {
                         // 全新使用者 - 建立帳號
-                        Log.Information("[GoogleOAuthService] 新 Google 使用者註冊，Email: {Email}", googleUser.Email);
                         isNewUser = true;
 
                         // 建立 UserTable
@@ -274,7 +249,6 @@ namespace PawsPort.Services
                             await _memberPermissionService.CreateMemberPermissionAsync(permissionDto);
                         }
 
-                        Log.Information("[GoogleOAuthService] Google 新使用者建立成功，UserId: {UserId}", userId);
                     }
                 }
 
@@ -295,7 +269,6 @@ namespace PawsPort.Services
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[GoogleOAuthService] Google OAuth 登入/註冊失敗");
                 return (false, null, 0, false);
             }
         }

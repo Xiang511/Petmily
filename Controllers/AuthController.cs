@@ -66,12 +66,10 @@ namespace PawsPort.Controllers
                     }
                 };
 
-                Log.Debug("[AuthController] GetAllSuccessfulLogins - 查詢成功，共 {Count} 筆", logs.Count);
                 return Success(result);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[AuthController] GetAllSuccessfulLogins - 查詢失敗");
                 return Failure("查詢失敗", "Query_Error", 500);
             }
         }
@@ -110,12 +108,10 @@ namespace PawsPort.Controllers
                     }
                 };
 
-                Log.Debug("[AuthController] GetAllFailedLogins - 查詢成功，共 {Count} 筆", logs.Count);
                 return Success(result);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[AuthController] GetAllFailedLogins - 查詢失敗");
                 return Failure("查詢失敗", "Query_Error", 500);
             }
         }
@@ -133,7 +129,6 @@ namespace PawsPort.Controllers
         [Tags("身分驗證")]
         public async Task<IActionResult> GetLoginHistory(int userId, [FromQuery] int limit = 10)
         {
-            Log.Debug("[AuthController] GetLoginHistory - UserId: {UserId}, Limit: {Limit}", userId, limit);
 
             var loginHistory = await _loginLogService.GetUserLoginHistoryAsync(userId, limit);
 
@@ -153,7 +148,6 @@ namespace PawsPort.Controllers
         [Tags("身分驗證")]
         public async Task<IActionResult> GetFailedLogins([FromQuery] string email, [FromQuery] int hours = 24)
         {
-            Log.Debug("[AuthController] GetFailedLogins - Email: {Email}, Hours: {Hours}", email, hours);
 
             var timeWindow = TimeSpan.FromHours(hours);
             var failedLogins = await _loginLogService.GetRecentFailedLoginsAsync(email, timeWindow);
@@ -176,18 +170,15 @@ namespace PawsPort.Controllers
         [Tags("身分驗證")]
         public async Task<IActionResult> Register([FromBody] UserRegisterDTO model)
         {
-            Log.Debug("[AuthController] Register POST - Entry, Email: {Email}, Name: {Name}", model.Email, model.Name);
 
             var (success, message) = await _authService.RegisterUser(model);
 
             if (success)
             {
-                Log.Debug("[AuthController] Register - 驗證碼已發送: {Email}", model.Email);
                 return Success(new { Message = message, Email = model.Email });
             }
             else
             {
-                Log.Warning("[AuthController] Register - 註冊失敗: {Email}, 原因: {Message}", model.Email, message);
                 return Failure(message, "REGISTRATION_FAILED", 400);
             }
         }
@@ -205,7 +196,6 @@ namespace PawsPort.Controllers
         [Tags("身分驗證")]
         public async Task<IActionResult> VerifyRegisterEmail([FromBody] RegisterVerifyDTO model)
         {
-            Log.Debug("[AuthController] VerifyRegisterEmail POST - Email: {Email}", model.Email);
 
             if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.VerificationCode))
             {
@@ -216,7 +206,6 @@ namespace PawsPort.Controllers
 
             if (success)
             {
-                Log.Debug("[AuthController] VerifyRegisterEmail - 驗證成功: {Email}, UserId: {UserId}", model.Email, userId);
 
                 // 為新用戶分配各系統一般成員權限
                 // 寵物系統(2), 遊戲系統(3), 客服系統(4), 社群系統(5)
@@ -233,15 +222,12 @@ namespace PawsPort.Controllers
                     };
 
                     await _memberPermissionService.CreateMemberPermissionAsync(permissionDto);
-                    Log.Debug("[AuthController] VerifyRegisterEmail - 已分配權限: UserId={UserId}, SystemId={SystemId}, RoleId={RoleId}",
-                        userId, systemId, generalMemberRoleId);
                 }
 
                 return Success(new { Message = message, Email = model.Email, UserId = userId });
             }
             else
             {
-                Log.Warning("[AuthController] VerifyRegisterEmail - 驗證失敗: {Email}, 原因: {Message}", model.Email, message);
                 return Failure(message, "VERIFY_FAILED", 400);
             }
         }
@@ -261,7 +247,6 @@ namespace PawsPort.Controllers
             var ipAddress = GetClientIpAddress();
             var userAgent = Request.Headers["User-Agent"].ToString();
 
-            Log.Debug("[AuthController] RequestLoginVerificationCode - Email: {Email}, IP: {IP}", model.Email, ipAddress);
 
             if (string.IsNullOrWhiteSpace(model.Email))
             {
@@ -290,21 +275,18 @@ namespace PawsPort.Controllers
 
                     await _loginLogService.LogUserLoginAsync(userInfo.UserId, model.Email, ipAddress, userAgent);
 
-                    Log.Information("[AuthController] RequestLoginVerificationCode - 跳過驗證直接登入成功: {Email}, IP: {IP}", model.Email, ipAddress);
                     return Success(new { Token = directToken, User = AuthUserDTO.From(userInfo), Message = message, SkipVerification = true });
                 }
             }
 
             if (success)
             {
-                Log.Information("[AuthController] RequestLoginVerificationCode - 驗證碼已發送: {Email}", model.Email);
                 return Success(new { Message = message, Email = model.Email, SkipVerification = false });
             }
             else
             {
                 // 記錄失敗的登入嘗試
                 await _loginLogService.LogFailedLoginAsync(model.Email, ipAddress, userAgent, message);
-                Log.Warning("[AuthController] RequestLoginVerificationCode - 失敗: {Email}, 原因: {Message}", model.Email, message);
                 return Failure(message, "Authentication_Failed", 401);
             }
         }
@@ -325,7 +307,6 @@ namespace PawsPort.Controllers
             var ipAddress = GetClientIpAddress();
             var userAgent = Request.Headers["User-Agent"].ToString();
 
-            Log.Debug("[AuthController] VerifyLoginCode - Email: {Email}, IP: {IP}", model.Email, ipAddress);
 
             if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.VerificationCode))
             {
@@ -355,14 +336,12 @@ namespace PawsPort.Controllers
                     // 記錄成功的登入
                     await _loginLogService.LogUserLoginAsync(userInfo.UserId, model.Email, ipAddress, userAgent);
 
-                    Log.Information("[AuthController] VerifyLoginCode - 登入成功: {Email}, IP: {IP}", model.Email, ipAddress);
                     return Success(new { Token = token, User = AuthUserDTO.From(userInfo), Message = message });
                 }
             }
 
             // 驗證失敗
             await _loginLogService.LogFailedLoginAsync(model.Email, ipAddress, userAgent, message);
-            Log.Warning("[AuthController] VerifyLoginCode - 驗證失敗: {Email}, 原因: {Message}", model.Email, message);
             return Failure(message, "Verification_Failed", 401);
         }
 
@@ -483,7 +462,6 @@ namespace PawsPort.Controllers
 
         public async Task<IActionResult> Logout()
         {
-            Log.Debug("[AuthController] Logout POST - Entry");
 
             // 手動登出時，讓 20 分鐘免驗證失效，強制下次登入重新寄 Email 驗證碼
             var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -507,10 +485,8 @@ namespace PawsPort.Controllers
 
                 // 刪除 Cookie
                 Response.Cookies.Delete("X-Access-Token", cookieOptions);
-                Log.Debug("[AuthController] Logout - Cookie 已刪除");
             }
 
-            Log.Debug("[AuthController] Logout POST - Exit");
             return Success(true, "登出成功", 200);
         }
 
@@ -529,7 +505,6 @@ namespace PawsPort.Controllers
         [Tags("身分驗證")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDTO model)
         {
-            Log.Debug("[AuthController] ForgotPassword - Email: {Email}", model.Email);
 
             if (string.IsNullOrWhiteSpace(model.Email))
             {
@@ -555,7 +530,6 @@ namespace PawsPort.Controllers
         [Tags("身分驗證")]
         public async Task<IActionResult> VerifyResetToken([FromBody] VerifyResetTokenDTO model)
         {
-            Log.Debug("[AuthController] VerifyResetToken - Email: {Email}", model.Email);
 
             if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.ResetToken))
             {
@@ -587,7 +561,6 @@ namespace PawsPort.Controllers
         [Tags("身分驗證")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDTO model)
         {
-            Log.Debug("[AuthController] ResetPassword - Email: {Email}", model.Email);
 
             // 驗證輸入
             if (string.IsNullOrWhiteSpace(model.Email) || 
@@ -616,12 +589,10 @@ namespace PawsPort.Controllers
 
             if (success)
             {
-                Log.Information("[AuthController] ResetPassword - 密碼重置成功: {Email}", model.Email);
                 return Success(new { Message = message });
             }
             else
             {
-                Log.Warning("[AuthController] ResetPassword - 密碼重置失敗: {Email}, 原因: {Message}", model.Email, message);
                 return Failure(message, "Reset_Failed", 400);
             }
         }
@@ -653,12 +624,9 @@ namespace PawsPort.Controllers
                 var googleToken = model.GetToken();
                 if (string.IsNullOrEmpty(googleToken))
                 {
-                    Log.Warning("[AuthController] Google 登入請求缺少 Token");
                     return Failure("缺少 Token", "Missing_Token", 400);
                 }
 
-                Log.Debug("[AuthController] Google 登入請求，Token 類型: {TokenType}, Token 長度: {Length}",
-                    !string.IsNullOrEmpty(model.AccessToken) ? "Access Token" : "ID Token", googleToken.Length);
 
                 // 1. 驗證 Google Token（支援 ID Token 和 Access Token）
                 var googleUser = await _googleOAuthService.VerifyGoogleTokenAsync(googleToken);
@@ -709,8 +677,6 @@ namespace PawsPort.Controllers
                 // 5. 取得使用者完整資訊
                 var userInfo = await _memberProfileService.GetUserInfoByEmailAsync(googleUser.Email);
 
-                Log.Information("[AuthController] Google OAuth 登入成功，Email: {Email}, UserId: {UserId}, IsNewUser: {IsNewUser}",
-                    googleUser.Email, userId, isNewUser);
 
                 return Success(new
                 {
@@ -722,7 +688,6 @@ namespace PawsPort.Controllers
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[AuthController] Google OAuth 登入時發生錯誤");
                 return Failure("伺服器錯誤", "Server_Error", 500);
             }
         }

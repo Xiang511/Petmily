@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using PawsPort.Dtos;
 using PawsPort.Models;
 using PawsPort.Services;
-using Serilog;
 
 namespace PawsPort.Controllers
 {
@@ -38,7 +37,6 @@ namespace PawsPort.Controllers
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "ShopController: 取得商品列表時發生異常");
                 return Failure("SHOP_LIST_ERROR", "伺服器目前無法讀取商品資料，請稍後再試", 500);
             }
         }
@@ -56,7 +54,6 @@ namespace PawsPort.Controllers
         [ProducesResponseType(typeof(ShopCreateDTO), StatusCodes.Status201Created)]
         public async Task<IActionResult> Create(ShopCreateDTO dto)
         {
-            Log.Information("ShopController: 收到 JSON 新增商品請求: {SkinName}", dto.SkinName);
 
             try
             {
@@ -65,7 +62,6 @@ namespace PawsPort.Controllers
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "ShopController: 新增商品失敗");
                 return Failure("SHOP_CREATE_FAILED", "伺服器儲存資料失敗", 500);
             }
         }
@@ -98,7 +94,6 @@ namespace PawsPort.Controllers
                 if (ex.Message == "商品不存在")
                     return Failure("SHOP_NOT_FOUND", "找不到指定的商品", 404);
 
-                Log.Error(ex, "ShopController: 更新商品 ID {id} 失敗", id);
                 return Failure("SHOP_UPDATE_FAILED", "更新過程發生錯誤", 500);
             }
         }
@@ -125,7 +120,6 @@ namespace PawsPort.Controllers
                 if (ex.Message == "商品不存在")
                     return Failure("SHOP_NOT_FOUND", "找不到指定的商品", 404);
 
-                Log.Error(ex, "ShopController: 刪除商品 ID {id} 失敗", id);
                 return Failure("SHOP_DELETE_FAILED", "刪除過程發生錯誤", 500);
             }
         }
